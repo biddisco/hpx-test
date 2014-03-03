@@ -1,0 +1,5 @@
+// Path=d:\build\hpx-my\debug\lib\hpx;D:\build\hpx\Debug\lib\hpx;C:\Qt\4.8.3\bin;C:\Boost\lib;c:\Program Files\HDF5_1_8_cmake-vs11\bin;$%PATH%
+
+// D:\build>"c:\Program Files\MPICH2\bin\mpiexec.exe" "-localonly" "2" "D:/build/h5fddsm/bin/Debug/H5FDdsmStandalone_bandwidth_rw.exe" --hpx:nodes localhost localhost --hpx:endnodes -Ihpx.parcel.bootstrap=tcp -Ihpx.parcel.tcp.enable=1 -Ihpx.parcel.mpi.enable=0 64 Block 2097152 VirtualRAM
+
+

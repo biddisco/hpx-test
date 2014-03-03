@@ -70,3 +70,6 @@ add_hpx_executable(serialize_buffer
     SOURCES serialize_buffer.cpp
     COMPONENT_DEPENDENCIES)
 target_link_libraries(serialize_buffer_exe iostreamsd)
+
+add_subdirectory(test_component)
+#add_subdirectory(accumulator)
