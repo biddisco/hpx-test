@@ -17,14 +17,14 @@ namespace server
   void test_component::invoke()
   {
       uint32_t hpxrank = hpx::naming::get_locality_id_from_id(hpx::find_here());
-      char const*  msg = "Hello HPX World created on %1% called from rank %2% ";
-      std::cout << (boost::format(msg) % this->rank % hpxrank) << std::endl;
+      char const*  msg = "Action invoke created on %1% called from rank %2% %3%";
+      std::cout << (boost::format(msg) % this->rank % hpxrank % hpx::get_locality_name()) << std::endl;
   }
 
   void test_component::invokeFrom(const uint32_t &loc)
   {
-      char const*  msg = "Hello HPX World created on %1% called from rank %2% ";
-      std::cout << (boost::format(msg) % this->rank % loc) << std::endl;
+      char const*  msg = "Action invokeFrom created on %1% called from rank %2% %3%";
+      std::cout << (boost::format(msg) % this->rank % loc % hpx::get_locality_name()) << std::endl;
   }
 
 }
