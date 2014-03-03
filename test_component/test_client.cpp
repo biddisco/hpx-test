@@ -29,7 +29,7 @@ int hpx_main(boost::program_options::variables_map&)
     std::vector<hpx::id_type> objects;
     for (hpx::naming::id_type &l : localities) {
       objects.push_back(
-        hpx::agas::resolve_name_sync("/component/" + boost::lexical_cast<std::string>(0))
+        hpx::agas::resolve_name_sync("/component/" + boost::lexical_cast<std::string>(hpx::naming::get_locality_id_from_id(l)))
         );
     }
 
