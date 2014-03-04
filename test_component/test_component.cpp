@@ -27,6 +27,12 @@ namespace server
       std::cout << (boost::format(msg) % this->rank % loc % hpx::get_locality_name()) << std::endl;
   }
 
+  void test_component::localTest(const uint32_t &loc) 
+  {
+      char const*  msg = "Local function created on %1% called from rank %2% %3%";
+      std::cout << (boost::format(msg) % this->rank % loc % hpx::get_locality_name()) << std::endl;
+  }
+
 }
 
 HPX_REGISTER_COMPONENT_MODULE();

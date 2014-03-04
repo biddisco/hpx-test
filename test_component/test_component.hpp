@@ -26,6 +26,8 @@ class HPX_COMPONENT_EXPORT test_component
     HPX_DEFINE_COMPONENT_ACTION(test_component, invoke, invoke_action);
     HPX_DEFINE_COMPONENT_ACTION(test_component, invokeFrom, invokeFrom_action);
 
+    void localTest(const uint32_t &loc);
+
   private:
     uint32_t rank;
 };

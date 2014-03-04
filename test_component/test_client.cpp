@@ -7,6 +7,8 @@
 #include <hpx/hpx_init.hpp>
 #include <hpx/runtime/agas/interface.hpp>
 #include <hpx/lcos/barrier.hpp>
+#include <hpx/include/iostreams.hpp>
+//
 #include <boost/lexical_cast.hpp>
 
 static hpx::lcos::barrier unique_barrier;
@@ -58,10 +60,16 @@ int hpx_main(boost::program_options::variables_map&)
     "/component/" + boost::lexical_cast<std::string>(hpxrank), 
     object);
 
+  boost::shared_ptr<server::test_component> local_component = hpx::get_ptr_sync<server::test_component>(object);
+  local_component->localTest(hpxrank);
+
   // wait until all processes have created their components
-  std::cout << "Waiting at barrier on " << hpxrank << std::endl; 
   hpx::lcos::barrier b = find_barrier("/my_startup_barrier");
+  if (hpxrank==0) {
+    hpx::cout << "Waiting at barrier before invoking actions" << hpx::endl << hpx::flush; 
+  }
   b.wait();
+
 
   // for each locality, find the handle of the component assigned to it
   // and store it for later use.
@@ -78,8 +86,9 @@ int hpx_main(boost::program_options::variables_map&)
     hpx::apply<server::test_component::invokeFrom_action>(o, hpxrank);
   }
 
-  std::cout << "Waiting at barrier on " << hpxrank << std::endl; 
-//  hpx::lcos::barrier b = find_barrier("/my_startup_barrier");
+  if (hpxrank==0) {
+    hpx::cout << "Waiting at barrier before exit" << hpx::endl << hpx::flush; 
+  }
   b.wait();
 
   // we don't need the barrier any more
