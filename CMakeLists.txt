@@ -29,11 +29,16 @@ find_package(HPX)
 include_directories(${HPX_INCLUDE_DIR})     
 link_directories(${HPX_LIBRARY_DIR})
 
+if (NOT $ENV{BOOST_ROOT} STREQUAL "")
+  set(BOOST_ROOT $ENV{BOOST_ROOT})
+endif()
 
 find_package(Boost)
 
+message("boost root is ${BOOST_ROOT}")
 link_directories("${BOOST_ROOT}/lib")
 link_directories("${HPXBOOST_ROOT}/lib")
+include_directories(${Boost_INCLUDE_DIR})
 
 find_package(QT4)
 if (QT4_FOUND)
