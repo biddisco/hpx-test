@@ -99,16 +99,14 @@ int hpx_main(int argc, char* argv[])
 {
     std::size_t const max_size = 1 << 10;
     boost::scoped_ptr<char> send_buffer(new char[max_size]);
-    hpx::id_type here = hpx::find_here();
-    uint64_t rank = hpx::util::mpi_environment::rank(); // (here.get_msb() >> 32);
-    std::string name = hpx::util::mpi_environment::get_processor_name();
-
-    std::size_t current = hpx::get_worker_thread_num();
-    uint32_t hpxrank = hpx::naming::get_locality_id_from_id(here);
+    hpx::id_type    here = hpx::find_here();
+    uint64_t        rank = hpx::naming::get_locality_id_from_id(here);
+    std::string     name = hpx::get_locality_name();
+    std::size_t  current = hpx::get_worker_thread_num();
 
     std::cout << "Hello world from " << name.c_str() << " rank " << rank << std::endl;
-    char const* msg = "hello world from OS-thread %1% on locality %2% mpi rank %3% hpxrank %4% hostname %5%";
-    hpx::cout << (boost::format(msg) % current % hpx::get_locality_id() % rank % hpxrank % name.c_str())
+    char const* msg = "hello world from OS-thread %1% on locality %2% mpi rank %3% hostname %4%";
+    hpx::cout << (boost::format(msg) % current % hpx::get_locality_id() % rank % name.c_str())
               << hpx::endl;
 
     char c;

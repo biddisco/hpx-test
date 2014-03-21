@@ -20,7 +20,6 @@
 #include <chrono>
 #include <thread>
 //
-#include <mpi.h>
 //----------------------------------------------------------------------------
 #define MESSAGE_ALIGNMENT 64
 #define MAX_ALIGNMENT 512
@@ -166,18 +165,16 @@ double receive(
 
 int hpx_main(int argc, char* argv[])
 {
-  hpx::id_type   here = hpx::find_here();
-  uint64_t       rank = hpx::util::mpi_environment::rank(); // (here.get_msb() >> 32);
-  std::string    name = hpx::util::mpi_environment::get_processor_name();
-  rank                = hpx::naming::get_locality_id_from_id(hpx::find_here());
-  uint64_t       size = hpx::get_num_localities().get();
-  std::size_t current = hpx::get_worker_thread_num();
-  uint32_t    hpxrank = hpx::naming::get_locality_id_from_id(here);
+  hpx::id_type    here = hpx::find_here();
+  uint64_t        rank = hpx::naming::get_locality_id_from_id(here);
+  std::string     name = hpx::get_locality_name();
+  uint64_t        size = hpx::get_num_localities().get();
+  std::size_t  current = hpx::get_worker_thread_num();
   std::vector<hpx::id_type>    remotes = hpx::find_remote_localities();
   std::vector<hpx::id_type> localities = hpx::find_all_localities();
 
-  char const* msg = "hello world from OS-thread %1% on locality %2% mpi rank %3% hpxrank %4% hostname %5%";
-  std::cout << (boost::format(msg) % current % hpx::get_locality_id() % rank % hpxrank % name.c_str())
+  char const* msg = "hello world from OS-thread %1% on locality %2% mpi rank %3% hostname %4%";
+  std::cout << (boost::format(msg) % current % hpx::get_locality_id() % rank % name.c_str())
     << std::endl;
 
   std::cout << hpx::flush;
@@ -189,14 +186,14 @@ int hpx_main(int argc, char* argv[])
 
   boost::shared_array<char> char_data(new char[1024]());
   char const *fmt = "Hello char array generated on rank %1% ";
-  std::string temp = boost::str(boost::format(fmt) % hpxrank );
+  std::string temp = boost::str(boost::format(fmt) % rank );
   strcpy(&char_data[0], temp.c_str());
 
   hpx::util::high_resolution_timer timer;
                                                             
   for (hpx::id_type& loc: localities) {
     char const* msg = "Rank %1% sending %2% bytes to %3%";
-    std::cout << (boost::format(msg) % hpxrank % transfersize % hpx::naming::get_locality_id_from_id(loc))
+    std::cout << (boost::format(msg) % rank % transfersize % hpx::naming::get_locality_id_from_id(loc))
       << hpx::endl;
     double latency = receive(loc, char_data.get(), 1024, 1);
     std::cout << std::left << std::setw(10) << transfersize << latency << hpx::endl << hpx::flush;

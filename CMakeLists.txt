@@ -45,8 +45,8 @@ if (QT4_FOUND)
   add_subdirectory(qt)
 endif()
 
-find_package(MPI)
-INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
+#find_package(MPI)
+#INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
 
 if(BGQ)
   add_hpx_executable(bgq_test
@@ -68,7 +68,7 @@ add_hpx_executable(benchmark_transfers
 #    osu_base.cpp
     COMPONENT_DEPENDENCIES)
 target_link_libraries(benchmark_transfers_exe iostreamsd)
-target_link_libraries(benchmark_transfers_exe ${MPI_LIBRARY})
+#target_link_libraries(benchmark_transfers_exe ${MPI_LIBRARY})
 
 add_hpx_executable(serialize_buffer
     ESSENTIAL
