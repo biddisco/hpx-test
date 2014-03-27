@@ -52,6 +52,10 @@
 // It is the final copy in each case I am trying to remove by customizing the allocator   
 // to pass from the parcelport directly into user memory.
 //
+// To make each process run a main function and participate in the test, 
+// use a command line of the kind (no mpiexec assumed)
+// benchmark_network_storage.exe -l%1 -%%x --hpx:run-hpx-main --hpx:threads=4 (+or more)
+// where %l is num_ranks, and %%x is rank of current process
 
 //----------------------------------------------------------------------------
 // These are used to track how many requests are pending for each locality
@@ -64,19 +68,23 @@ std::vector<std::vector<hpx::unique_future<int>>> ActiveFutures;
 hpx::lcos::local::spinlock                        FuturesMutex;
 std::atomic<bool>                                 FuturesActive;
 std::array<std::atomic<int>,64>                   FuturesWaiting;
+
+//----------------------------------------------------------------------------
+// Used at start and end of each loop for synchonization
+hpx::lcos::barrier unique_barrier;
+
 //----------------------------------------------------------------------------
 //
 // Each locality allocates a buffer of memory which is used to host transfers
-// Default is 512MB per node and a transfer size of 16MB.
 //
 char *local_storage = NULL;
-const int iterations = 10;
-// local storage (per node) is 256 MB
-#define local_storage_size (512*1024*1024)
-// transfer size 4MB
-#define transfer_size        (16*1024*1024)
+//
+const int         iterations = 10;
+const int local_storage_size = (256*1024*1024);
+const int      transfer_size = (16*1024*1024);
+
 //----------------------------------------------------------------------------
-#define DEBUG_LEVEL 5
+#define DEBUG_LEVEL 0
 #define DEBUG_OUTPUT(level,x) \
   if (DEBUG_LEVEL>=level) {   \
     x                         \
@@ -164,7 +172,7 @@ public:
 // A simple Buffer for sending data, it does not need any special allocator
 // user data may be sent to another locality using zero copy by wrapping
 // it in one of these buffers
-typedef hpx::util::serialize_buffer<char>                   TransferBuffer;
+typedef hpx::util::serialize_buffer<char, std::allocator<char>> TransferBuffer;
 //
 // When receiving data, we receive a hpx::serialize_buffer, we try to minimize
 // copying of data by providing a receive buffer with a fixed data pointer
@@ -291,6 +299,34 @@ int reduce(hpx::unique_future<std::vector<hpx::unique_future<int>>> &&futvec)
 }
 
 //----------------------------------------------------------------------------
+// Create a new barrier and register its gid with the given symbolic name.
+hpx::lcos::barrier create_barrier(std::size_t num_localities, char const* symname)
+{
+  hpx::lcos::barrier b;
+  DEBUG_OUTPUT(2,
+    std::cout << "Creating barrier based on N localities " << num_localities << std::endl;
+  );
+  b.create(hpx::find_here(), num_localities);
+  hpx::agas::register_name_sync(symname, b.get_gid());
+  return b;
+}
+
+//----------------------------------------------------------------------------
+// Find a registered barrier object from its symbolic name.
+hpx::lcos::barrier find_barrier(char const* symname)
+{
+  hpx::id_type id;
+  for (std::size_t i = 0; i != HPX_MAX_NETWORK_RETRIES; ++i) {
+    hpx::error_code ec;
+    id = hpx::agas::resolve_name_sync(symname, ec);
+    if (!ec) break;
+    boost::thread::sleep( boost::get_system_time() +
+                         boost::posix_time::milliseconds(HPX_NETWORK_RETRIES_SLEEP));
+  }
+  return hpx::lcos::barrier(id);
+}
+
+//----------------------------------------------------------------------------
 // Main test loop which randomly sends packets of data from one locality to another
 // looping over the entire buffer address space and timing the total transmit/receive time
 // to see how well we're doing.
@@ -299,7 +335,7 @@ int hpx_main(int argc, char* argv[])
   hpx::id_type                    here = hpx::find_here();
   uint64_t                        rank = hpx::naming::get_locality_id_from_id(here);
   std::string                     name = hpx::get_locality_name();
-  uint64_t                        size = hpx::get_num_localities().get();
+  uint64_t                      nranks = hpx::get_num_localities().get();
   std::size_t                  current = hpx::get_worker_thread_num();
   std::vector<hpx::id_type>    remotes = hpx::find_remote_localities();
   std::vector<hpx::id_type> localities = hpx::find_all_localities();
@@ -313,21 +349,26 @@ int hpx_main(int argc, char* argv[])
   //
   std::random_device rd;
   std::mt19937 gen(rd());
-  std::uniform_int_distribution<> random_rank(0, size-1);
+  std::uniform_int_distribution<> random_rank(0, nranks-1);
   std::uniform_int_distribution<> random_slot(0, num_transfer_slots-1);
   // 
   CopyToStorage_action actWrite;
   CopyFromStorage_action actRead;
   //
-  ActiveFutures.resize(size);
-  for (int i=0; i<size; i++) {
+  ActiveFutures.resize(nranks);
+  for (int i=0; i<nranks; i++) {
     FuturesWaiting[i] = 0;
   }
+
+  // create a barrier we will use at the start and end of each run to synchronize
+  create_barrier(nranks, "/DSM_barrier");
+  unique_barrier = find_barrier("/DSM_barrier");
 
   ////////////////////////////////
   // Test speed of write/put
   ////////////////////////////////
   //
+  unique_barrier.wait();
   hpx::util::high_resolution_timer timerWrite;
   //
   for (int i=0; i<iterations; i++) {
@@ -336,6 +377,8 @@ int hpx_main(int argc, char* argv[])
     //
     FuturesActive = true;
     hpx::unique_future<int> cleaner = hpx::async(RemoveCompletions);
+    //
+    // Start main message sending loop
     //
     for (int i=0; i<num_transfer_slots; i++) {
       // pick a random locality to send to
@@ -376,7 +419,7 @@ int hpx_main(int argc, char* argv[])
     );
     //
     std::vector<hpx::unique_future<int>> final_list;
-    for (int i=0; i<size; i++) {
+    for (int i=0; i<nranks; i++) {
       // move the contents of intermediate vector into final list
       std::move(ActiveFutures[i].begin(), ActiveFutures[i].end(), std::back_inserter(final_list));
       ActiveFutures[i].clear();
@@ -385,15 +428,22 @@ int hpx_main(int argc, char* argv[])
     hpx::unique_future<int> result = when_all(final_list).then(hpx::launch::sync,reduce);
     result.get();
   }
+  unique_barrier.wait();
   //
-  double time = timerWrite.elapsed();
-  std::cout << "Total time: " << time << "\n";
-  std::cout << "Memory Transferred " << std::hex << std::setw(8) << local_storage_size*iterations*size << std::endl;
-  std::cout << "Aggregate BW Write " << (local_storage_size*iterations*size/time)/(1024*1024) << "MB/s" << std::endl;
+  double writeMB   = nranks*local_storage_size*iterations/(1024.0*1024.0);
+  double writeTime = timerWrite.elapsed();
+  double writeBW   = writeMB/writeTime;
+  if (rank==0) {
+    std::cout << "Total time         : " << writeTime << "\n";
+    std::cout << "Memory Transferred : " << writeMB   << "MB \n";
+    std::cout << "Aggregate BW Write : " << writeBW   << "MB/s" << std::endl;
+  }
 
   ////////////////////////////////
   // Test speed of read/get
   ////////////////////////////////
+  // this is mostly the same as the put loop, except that the received future is not
+  // an int, but a transfer buffer which we have to copy out of.
   //
   hpx::util::high_resolution_timer timerRead;
   //
@@ -403,6 +453,8 @@ int hpx_main(int argc, char* argv[])
     //
     FuturesActive = true;
     hpx::unique_future<int> cleaner = hpx::async(RemoveCompletions);
+    //
+    // Start main message sending loop
     //
     for (int i=0; i<num_transfer_slots; i++) {
       // pick a random locality to send to
@@ -426,6 +478,7 @@ int hpx_main(int argc, char* argv[])
             hpx::async(actRead, locality, memory_offset, transfer_size).then(hpx::launch::sync,
               [=](hpx::unique_future<TransferBuffer> &&fut) -> int {
                 // Retrieve the serialized data buffer that was returned from the action
+                // try to minimize copies by receiving into our custom buffer.
                 TransferBufferReceive buffer(fut.get(), static_cast<char*>(buffer));
                 --FuturesWaiting[send_rank];
                 return TEST_SUCCESS;
@@ -444,7 +497,7 @@ int hpx_main(int argc, char* argv[])
     );
     //
     std::vector<hpx::unique_future<int>> final_list;
-    for (int i=0; i<size; i++) {
+    for (int i=0; i<nranks; i++) {
       // move the contents of intermediate vector into final list
       std::move(ActiveFutures[i].begin(), ActiveFutures[i].end(), std::back_inserter(final_list));
       ActiveFutures[i].clear();
@@ -453,11 +506,16 @@ int hpx_main(int argc, char* argv[])
     hpx::unique_future<int> result = when_all(final_list).then(hpx::launch::sync,reduce);
     result.get();
   }
+  unique_barrier.wait();
   //
-  time = timerRead.elapsed();
-  std::cout << "Total time: " << time << "\n";
-  std::cout << "Memory Transferred " << std::hex << std::setw(8) << local_storage_size*iterations*size << std::endl;
-  std::cout << "Aggregate BW Read " << (local_storage_size*iterations*size/time)/(1024*1024) << "MB/s" << std::endl;
+  double readMB   = nranks*local_storage_size*iterations/(1024.0*1024.0);
+  double readTime = timerRead.elapsed();
+  double readBW   = readMB/readTime;
+  if (rank==0) {
+    std::cout << "Total time         : " << readTime << "\n";
+    std::cout << "Memory Transferred : " << readMB   << "MB \n";
+    std::cout << "Aggregate BW Read  : " << readBW   << "MB/s" << std::endl;
+  }
 
   //
   delete_local_storage();
