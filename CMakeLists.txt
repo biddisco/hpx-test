@@ -70,11 +70,11 @@ add_hpx_executable(serialize_buffer
     COMPONENT_DEPENDENCIES)
 target_link_libraries(serialize_buffer_exe iostreamsd)
 
-add_hpx_executable(serialization_overhead
-    ESSENTIAL
-    SOURCES serialization_overhead.cpp
-    COMPONENT_DEPENDENCIES)
-target_link_libraries(serialization_overhead_exe iostreamsd)
+#add_hpx_executable(serialization_overhead
+#    ESSENTIAL
+#    SOURCES serialization_overhead.cpp
+#    COMPONENT_DEPENDENCIES)
+#target_link_libraries(serialization_overhead_exe iostreamsd)
 
 add_hpx_executable(benchmark_network_storage
     ESSENTIAL

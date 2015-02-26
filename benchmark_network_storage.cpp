@@ -479,7 +479,7 @@ int hpx_main(int argc, char* argv[])
               [=](hpx::unique_future<TransferBuffer> &&fut) -> int {
                 // Retrieve the serialized data buffer that was returned from the action
                 // try to minimize copies by receiving into our custom buffer.
-                TransferBufferReceive buffer(fut.get(), static_cast<char*>(buffer));
+                TransferBufferReceive recieve_buffer(fut.get(), buffer);
                 --FuturesWaiting[send_rank];
                 return TEST_SUCCESS;
               }
