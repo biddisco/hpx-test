@@ -8,7 +8,6 @@
 #include <hpx/util/lightweight_test.hpp>
 #include <hpx/util/serialize_buffer.hpp>
 #include <hpx/include/iostreams.hpp>
-#include <hpx/runtime/naming/locality.hpp>
 
 #include <boost/shared_ptr.hpp>
 #include <boost/foreach.hpp>
@@ -49,7 +48,7 @@ void test(hpx::id_type dest, char* send_buffer, std::size_t size)
     typedef Buffer buffer_type;
     buffer_type recv_buffer;
 
-    std::vector<hpx::unique_future<buffer_type> > recv_buffers;
+    std::vector<hpx::future<buffer_type> > recv_buffers;
     recv_buffers.resize(10);
 
     Action act;
@@ -60,7 +59,7 @@ void test(hpx::id_type dest, char* send_buffer, std::size_t size)
     }
     hpx::wait_all(recv_buffers);
 
-    BOOST_FOREACH(hpx::unique_future<buffer_type>& f, recv_buffers)
+    BOOST_FOREACH(hpx::future<buffer_type>& f, recv_buffers)
     {
         buffer_type b = f.get();
         HPX_TEST_EQ(b.size(), size);
@@ -75,7 +74,7 @@ void test_stateful_allocator(hpx::id_type dest, char* send_buffer,
     typedef buffer_allocator_type buffer_type;
     buffer_type recv_buffer;
 
-    std::vector<hpx::unique_future<buffer_type> > recv_buffers;
+    std::vector<hpx::future<buffer_type> > recv_buffers;
     recv_buffers.resize(10);
 
     bounce_allocator_action act;
@@ -86,7 +85,7 @@ void test_stateful_allocator(hpx::id_type dest, char* send_buffer,
     }
     hpx::wait_all(recv_buffers);
 
-    BOOST_FOREACH(hpx::unique_future<buffer_type>& f, recv_buffers)
+    BOOST_FOREACH(hpx::future<buffer_type>& f, recv_buffers)
     {
         buffer_type b = f.get();
         HPX_TEST_EQ(b.size(), size);

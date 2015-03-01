@@ -20,9 +20,9 @@ set(tc_app_SRCS
   test_client.cpp
 )
 
-add_hpx_executable(test_component_client
-    ESSENTIAL
-    SOURCES ${tc_app_SRCS}
-    COMPONENT_DEPENDENCIES)
-target_link_libraries(test_component_client_exe test_component_component)
-
+add_executable(test_component_client ${tc_app_SRCS})
+hpx_setup_target(test_component_client)
+target_link_libraries(test_component_client
+    iostreams_component
+    ${Boost_LIBRARIES}
+)
