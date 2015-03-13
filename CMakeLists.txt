@@ -3,47 +3,45 @@ project(HPX-tests CXX)
 # Require a recent version of cmake
 cmake_minimum_required(VERSION 2.8.4 FATAL_ERROR)
 
-
-if (NOT $ENV{HPX_ROOT} STREQUAL "") 
-  message("HPX root is ${HPX_ROOT} or $ENV{HPX_ROOT}")
-  set(HPX_ROOT $ENV{HPX_ROOT})
-endif()
+#--------------------------------------------------
+# Setup Output directories
+#--------------------------------------------------
+SET (CMAKE_RUNTIME_OUTPUT_DIRECTORY
+    ${PROJECT_BINARY_DIR}/bin CACHE PATH "Single Directory for all Executables."
+)
+SET (CMAKE_LIBRARY_OUTPUT_DIRECTORY
+    ${PROJECT_BINARY_DIR}/bin CACHE PATH "Single Directory for all Libraries"
+)
+SET (CMAKE_ARCHIVE_OUTPUT_DIRECTORY
+    ${PROJECT_BINARY_DIR}/bin CACHE PATH "Single Directory for all static libraries."
+)
+#--------------------------------------------------
+# Find Boost (should already be found by HPX anyway)
+#--------------------------------------------------
+find_package(Boost 1.56
+    COMPONENTS
+        program_options thread system date_time chrono serialization atomic filesystem
+    REQUIRED
+)
 if (WIN32)
-  set(HPX_ROOT "C:/Program Files/hpx")
+  add_definitions(-DBOOST_PROGRAM_OPTIONS_DYN_LINK)
 endif()
 
-if(HPX_ROOT STREQUAL "")
-  message(ERROR "HPX_ROOT not set to installation of HPX")
-endif()
+message("Boost libs are in ${Boost_LIBRARY_DIRS}  ${Boost_LIBRARIES}")
 
-# This adds the HPX cmake configuration directory to the search path.
-message("Setting ${HPX_ROOT}/share/cmake-${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}/Modules")
-set(CMAKE_MODULE_PATH
-    ${HPX_ROOT}/share/cmake-${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}/Modules
-    ${HPX_ROOT}/share/hpx-0.9.8/cmake)
+#--------------------------------------------------
+# Find HPX
+#--------------------------------------------------
+find_package(HPX REQUIRED)
+set(CMAKE_CXX_FLAGS ${HPX_CXX_FLAGS})
+include_directories(${HPX_INCLUDE_DIRS})
+get_filename_component(HPX_SOURCE_DIR ${CMAKE_MODULE_PATH} DIRECTORY)
+#set(HPX_SOURCE_DIR "${CMAKE_MODULE_PATH}/..")
+message("HPX source dir is ${HPX_SOURCE_DIR}")
 
+#link_directories("${HPXBOOST_ROOT}/lib")
+#include_directories(${Boost_INCLUDE_DIR})
 
-# Instruct cmake to find the HPX settings
-find_package(HPX)
-
-include_directories(${HPX_INCLUDE_DIR})     
-link_directories(${HPX_LIBRARY_DIR})
-
-if (NOT $ENV{BOOST_ROOT} STREQUAL "")
-  set(BOOST_ROOT $ENV{BOOST_ROOT})
-endif()
-
-find_package(Boost)
-
-message("boost root is ${BOOST_ROOT}")
-link_directories("${BOOST_ROOT}/lib")
-link_directories("${HPXBOOST_ROOT}/lib")
-include_directories(${Boost_INCLUDE_DIR})
-
-find_package(QT4)
-if (QT4_FOUND)
-  add_subdirectory(qt)
-endif()
 
 if(BGQ)
   add_hpx_executable(bgq_test
@@ -52,35 +50,27 @@ if(BGQ)
       COMPONENT_DEPENDENCIES)
 endif()
 
-add_hpx_executable(future_reduce
-    ESSENTIAL
-    SOURCES future_reduce.cpp
-    COMPONENT_DEPENDENCIES)
-target_link_libraries(future_reduce_exe iostreamsd)
+add_executable(future_reduce future_reduce.cpp)
+hpx_setup_target(future_reduce)
+target_link_libraries(future_reduce
+    iostreams_component
+    ${Boost_LIBRARIES}
+)
 
-add_hpx_executable(benchmark_transfers
-    ESSENTIAL
-    SOURCES benchmark_transfers.cpp
-    COMPONENT_DEPENDENCIES)
-target_link_libraries(benchmark_transfers_exe iostreamsd)
+add_executable(benchmark_transfers benchmark_transfers.cpp)
+hpx_setup_target(benchmark_transfers)
+target_link_libraries(benchmark_transfers
+    iostreams_component
+    ${Boost_LIBRARIES}
+)
+add_executable(serialize_buffer serialize_buffer.cpp)
+hpx_setup_target(serialize_buffer)
+target_link_libraries(serialize_buffer
+    iostreams_component
+    ${Boost_LIBRARIES}
+)
 
-add_hpx_executable(serialize_buffer
-    ESSENTIAL
-    SOURCES serialize_buffer.cpp
-    COMPONENT_DEPENDENCIES)
-target_link_libraries(serialize_buffer_exe iostreamsd)
+add_subdirectory(network_storage)
 
-add_hpx_executable(serialization_overhead
-    ESSENTIAL
-    SOURCES serialization_overhead.cpp
-    COMPONENT_DEPENDENCIES)
-target_link_libraries(serialization_overhead_exe iostreamsd)
-
-add_hpx_executable(benchmark_network_storage
-    ESSENTIAL
-    SOURCES benchmark_network_storage.cpp
-    COMPONENT_DEPENDENCIES)
-target_link_libraries(benchmark_network_storage_exe iostreamsd)
-
-add_subdirectory(test_component)
+#add_subdirectory(test_component)
 

@@ -19,11 +19,11 @@ std::uniform_int_distribution<int> dist(0,99); // interval [0,100)
 #define USE_LAMBDA
 
 //----------------------------------------------------------------------------
-int reduce(hpx::unique_future<std::vector<hpx::unique_future<int>>> &&fs)
+int reduce(hpx::future<std::vector<hpx::future<int>>> &&fs)
 {
   int res = TEST_SUCCESS;
-  std::vector<hpx::unique_future<int> > vfs = fs.get();  
-  for (hpx::unique_future<int>& f: vfs) {
+  std::vector<hpx::future<int> > vfs = fs.get();  
+  for (hpx::future<int>& f: vfs) {
     if (f.get() == TEST_FAIL) return TEST_FAIL;
   }
   return res;
@@ -41,32 +41,32 @@ int generate_one()
 }
 
 //----------------------------------------------------------------------------
-hpx::unique_future<int> test_reduce()
+hpx::future<int> test_reduce()
 {
-  std::vector<hpx::unique_future<int>> req_futures;
+  std::vector<hpx::future<int>> req_futures;
   //
   for (int i=0; i<SAMPLES_PER_LOOP; i++) {
     // generate random sequence of pass/fails using % fail rate per incident
-    hpx::unique_future<int> result = hpx::async(generate_one);
+    hpx::future<int> result = hpx::async(generate_one);
     req_futures.push_back(std::move(result));
   }
 
-  hpx::unique_future<std::vector<hpx::unique_future<int>>> all_ready = when_all(req_futures);
+  hpx::future<std::vector<hpx::future<int>>> all_ready = when_all(req_futures);
 
 #ifdef USE_LAMBDA
-  hpx::unique_future<int> result = all_ready.then(
-    [](hpx::unique_future<std::vector<hpx::unique_future<int>>> &&fut) -> int {
+  hpx::future<int> result = all_ready.then(
+    [](hpx::future<std::vector<hpx::future<int>>> &&fut) -> int {
       // fut is ready or the lambda would not be caled
-      std::vector<hpx::unique_future<int>> v = fut.get();
+      std::vector<hpx::future<int>> v = fut.get();
       // all futures in v are ready as fut is ready
       int res = TEST_SUCCESS;
-      for (hpx::unique_future<int>& f: v) {
+      for (hpx::future<int>& f: v) {
         if (f.get() == TEST_FAIL) return TEST_FAIL;
       }
       return res;
   });
 #else
-  hpx::unique_future<int> result = all_ready.then(reduce);
+  hpx::future<int> result = all_ready.then(reduce);
 #endif
   //
   return result;

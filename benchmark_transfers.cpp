@@ -10,7 +10,6 @@
 #include <hpx/hpx.hpp>
 #include <hpx/include/iostreams.hpp>
 #include <hpx/util/serialize_buffer.hpp>
-#include <hpx/runtime/naming/locality.hpp>
 
 #include <boost/assert.hpp>
 #include <boost/shared_ptr.hpp>
@@ -139,7 +138,7 @@ double receive(
 
   hpx::util::high_resolution_timer t;
 
-  std::vector<hpx::unique_future<buffer_test_allocator> > recv_buffers;
+  std::vector<hpx::future<buffer_test_allocator> > recv_buffers;
   recv_buffers.reserve(window_size);
 
   allocator_message_action msg;
