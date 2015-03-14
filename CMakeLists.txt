@@ -18,7 +18,7 @@ SET (CMAKE_ARCHIVE_OUTPUT_DIRECTORY
 #--------------------------------------------------
 # Find Boost (should already be found by HPX anyway)
 #--------------------------------------------------
-find_package(Boost 1.56
+find_package(Boost 1.55
     COMPONENTS
         program_options thread system date_time chrono serialization atomic filesystem
     REQUIRED
@@ -36,12 +36,15 @@ find_package(HPX REQUIRED)
 set(CMAKE_CXX_FLAGS ${HPX_CXX_FLAGS})
 include_directories(${HPX_INCLUDE_DIRS})
 get_filename_component(HPX_SOURCE_DIR ${CMAKE_MODULE_PATH} DIRECTORY)
-#set(HPX_SOURCE_DIR "${CMAKE_MODULE_PATH}/..")
+set(HPX_SOURCE_DIR "${CMAKE_MODULE_PATH}/..")
 message("HPX source dir is ${HPX_SOURCE_DIR}")
+
+include_directories(${HPX_SOURCE_DIR}/tests/unit/parallel)
 
 #link_directories("${HPXBOOST_ROOT}/lib")
 #include_directories(${Boost_INCLUDE_DIR})
 
+hpx_add_compile_flag(-bigobj)
 
 if(BGQ)
   add_hpx_executable(bgq_test
@@ -50,27 +53,23 @@ if(BGQ)
       COMPONENT_DEPENDENCIES)
 endif()
 
-add_executable(future_reduce future_reduce.cpp)
-hpx_setup_target(future_reduce)
-target_link_libraries(future_reduce
+macro(add_simple name)
+ add_executable(${name} ${name}.cpp)
+  hpx_setup_target(${name})
+  target_link_libraries(${name}
     iostreams_component
     ${Boost_LIBRARIES}
-)
+  )
+endmacro()
 
-add_executable(benchmark_transfers benchmark_transfers.cpp)
-hpx_setup_target(benchmark_transfers)
-target_link_libraries(benchmark_transfers
-    iostreams_component
-    ${Boost_LIBRARIES}
-)
-add_executable(serialize_buffer serialize_buffer.cpp)
-hpx_setup_target(serialize_buffer)
-target_link_libraries(serialize_buffer
-    iostreams_component
-    ${Boost_LIBRARIES}
-)
+add_simple(future_reduce)
+add_simple(benchmark_transfers)
+add_simple(serialize_buffer)
+add_simple(scan_in_place)
+add_simple(inclusive_scan)
+add_simple(exclusive_scan)
 
-add_subdirectory(network_storage)
+#add_subdirectory(network_storage)
 
 #add_subdirectory(test_component)
 
